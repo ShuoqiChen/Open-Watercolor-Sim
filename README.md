@@ -14,7 +14,7 @@ A high-quality, GPU-accelerated watercolor simulation engine built using Taichi.
 ## Demos
 
 ### Video Preview
-https://github.com/shuoqichen/Open-Watercolor-Sim/assets/demo/demo.m4v
+https://github.com/shuoqichen/Open-Watercolor-Sim/demo/demo.m4v
 
 <video src="demo/demo.m4v" controls width="100%"></video>
 
