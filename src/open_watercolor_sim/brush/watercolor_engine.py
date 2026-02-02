@@ -375,7 +375,7 @@ class WatercolorEngine:
                 new_m = pigment_to_add * a_mask
                 
                 total_m_raw = old_p.w + new_m
-                total_m = ti.min(total_m_raw, MAX_WET_PIGMENT_MASS)
+                total_m = ti.min(total_m_raw, self._max_wet_pigment[None])
                 
                 kept = total_m / (total_m_raw + 1e-6)
                 new_m = new_m * kept
@@ -660,8 +660,8 @@ class WatercolorEngine:
                 m_p = _clamp_01(m_p * hole * grain)
                 m_w = _clamp_01(m_w * (0.95 + 0.05 * hole))
                 
-                sat_stain = self.A[i, j].w / (MAX_STAIN_PIGMENT_MASS + 1e-6)
-                sat_wet = old_p.w / (MAX_WET_PIGMENT_MASS + 1e-6)
+                sat_stain = self.A[i, j].w / (self._max_stain_pigment[None] + 1e-6)
+                sat_wet = old_p.w / (self._max_wet_pigment[None] + 1e-6)
                 sat = ti.max(sat_stain, sat_wet)
                 sat = ti.min(1.0, ti.max(0.0, sat))
                 m_p = m_p * (1.0 - 0.98 * ti.pow(sat, 3.5))
@@ -669,7 +669,7 @@ class WatercolorEngine:
                 new_m = pig_add * m_p
                 total_m_raw = old_p.w + new_m
 
-                total_m = ti.min(total_m_raw, MAX_WET_PIGMENT_MASS)
+                total_m = ti.min(total_m_raw, self._max_wet_pigment[None])
 
                 kept = total_m / (total_m_raw + 1e-6)
                 new_m = new_m * kept
@@ -745,7 +745,7 @@ class WatercolorEngine:
             s = _clamp_01(settle * dw * edge_term * branch_mod)
             
             old_a = self.A[i, j]
-            stain_sat = _clamp_01(old_a.w / (MAX_STAIN_PIGMENT_MASS + 1e-6))
+            stain_sat = _clamp_01(old_a.w / (self._max_stain_pigment[None] + 1e-6))
             
             one_minus_sat = 1.0 - stain_sat
             s = s * (one_minus_sat * one_minus_sat * ti.sqrt(one_minus_sat))
@@ -754,7 +754,7 @@ class WatercolorEngine:
             settled_m = p_prev.w * s
             
             total_am_raw = old_a.w + settled_m
-            total_am = ti.min(total_am_raw, MAX_STAIN_PIGMENT_MASS)
+            total_am = ti.min(total_am_raw, self._max_stain_pigment[None])
             kept_a = total_am / (total_am_raw + 1e-6)
             
             res_c = (old_a.xyz + settled_amt) * kept_a
