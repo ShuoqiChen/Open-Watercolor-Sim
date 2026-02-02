@@ -11,6 +11,16 @@ A high-quality, GPU-accelerated watercolor simulation engine built using Taichi.
 - **Physical Parameters**: Control diffusion, evaporation, gravity, and pigment load.
 - **Cross-Platform**: Runs on any system supported by Taichi (CUDA, Vulkan, Metal, etc.).
 
+## Demos
+
+### Video Preview
+https://github.com/shuoqichen/Open-Watercolor-Sim/assets/demo/demo.m4v
+
+<video src="demo/demo.m4v" controls width="100%"></video>
+
+### Output Example
+![Watercolor Demo](demo/demo.png)
+
 ## Installation
 
 1. **Clone the repository**:
@@ -60,6 +70,9 @@ watercolor-sim --help
 - **[ / ]**: Decrease / Increase brush radius.
 - **D / F**: Decrease / Increase brush dryness.
 - **B**: Toggle between brush types (Round / Sponge).
+- **P**: Toggle Paint Mode (Enable/Disable Brush).
+- **Tab**: Show/Hide UI Panel.
+- **Shift** (Hold): Safe Mode (Interact with UI or Move Window without painting).
 - **Escape**: Exit the simulator.
 
 ## Hardware & Software Requirements

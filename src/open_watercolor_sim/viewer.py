@@ -87,12 +87,17 @@ def launch_viewer():
     start_time = time.time()
     fps_limit = args.fps
 
+    # UI State
+    show_ui = True
+    paint_enabled = True
+
     while window.running:
         frame_start = time.time()
         curr_time = frame_start - start_time
         stamps_this_frame = 0 # Throttling cap
         
         is_painting = window.is_pressed(ti.ui.LMB)
+        safe_mode = window.is_pressed(ti.ui.SHIFT)
 
         # Handle events
         events = window.get_events(ti.ui.PRESS)
@@ -117,92 +122,98 @@ def launch_viewer():
                 import PIL.Image
                 PIL.Image.fromarray(img).save(f"render_{int(time.time())}.png")
                 print("Saved screenshot.")
-
+            elif e.key == 'p':
+                paint_enabled = not paint_enabled
+            elif e.key == ti.ui.TAB:
+                show_ui = not show_ui
             elif e.key == ti.ui.ESCAPE:
                 window.running = False
 
-        if is_painting:
+        if is_painting and paint_enabled and not safe_mode:
             # ti.ui.Window (GGUI) uses [0,1] with origin at BOTTOM-LEFT.
             mx, my = window.get_cursor_pos()
             
-            # Hit-test for control panel: [0.05, 0.35] x [0.05, 0.95]
-            if not (0.05 <= mx <= 0.35 and 0.05 <= my <= 0.95):
-                px, py = mx * RES, my * RES
+            # Hit-test logic removed to allow movable UI.
+            # Use 'Shift' guard or 'Tab' toggle to manage UI interactions.
+            px, py = mx * RES, my * RES
+            
+            if last_paint_pos is not None:
+                lx, ly = last_paint_pos
+                dx, dy = px - lx, py - ly
+                dist = (dx*dx + dy*dy)**0.5
                 
-                if last_paint_pos is not None:
-                    lx, ly = last_paint_pos
-                    dx, dy = px - lx, py - ly
-                    dist = (dx*dx + dy*dy)**0.5
-                    
-                    spacing = max(1.0, engine.p.brush_radius * 0.8)
-                    stroke_dist_accum += dist
-                    
-                    # 1. Throttling: distance-based and time-based
-                    if dist > 1e-4: # Ignore absolute stillness
-                        if stroke_dist_accum >= spacing or (curr_time - last_paint_time > paint_interval):
-                            # Use a single stamp per event to keep stamps/sec <= 60
-                            if stamps_this_frame < 1:
-                                engine.paint_brush(px, py, engine.p.brush_radius, brush_id=brush_id, dryness=dryness)
-                                stamps_this_frame += 1
-                                total_stamps += 1
-                            
-                            stroke_dist_accum = 0.0
-                            last_paint_time = curr_time
-                    
-                    last_paint_pos = (px, py)
-                else:
-                    # Initial click stamp
-                    engine.paint_brush(px, py, engine.p.brush_radius, brush_id=brush_id, dryness=dryness)
-                    stamps_this_frame += 1
-                    total_stamps += 1
-                    last_paint_pos = (px, py)
-                    last_paint_time = curr_time
+                spacing = max(1.0, engine.p.brush_radius * 0.8)
+                stroke_dist_accum += dist
+                
+                # 1. Throttling: distance-based and time-based
+                if dist > 1e-4: # Ignore absolute stillness
+                    if stroke_dist_accum >= spacing or (curr_time - last_paint_time > paint_interval):
+                        # Use a single stamp per event to keep stamps/sec <= 60
+                        if stamps_this_frame < 1:
+                            engine.paint_brush(px, py, engine.p.brush_radius, brush_id=brush_id, dryness=dryness)
+                            stamps_this_frame += 1
+                            total_stamps += 1
+                        
+                        stroke_dist_accum = 0.0
+                        last_paint_time = curr_time
+                
+                last_paint_pos = (px, py)
             else:
-                last_paint_pos = None # Reset when moving into UI
+                # Initial click stamp
+                engine.paint_brush(px, py, engine.p.brush_radius, brush_id=brush_id, dryness=dryness)
+                stamps_this_frame += 1
+                total_stamps += 1
+                last_paint_pos = (px, py)
+                last_paint_time = curr_time
         else:
             last_paint_pos = None
             stroke_dist_accum = 0.0
 
         # UI Sidebar (Overlay)
-        with gui.sub_window("Controls", 0.05, 0.05, 0.3, 0.9) as w:
-            gui.text("Simulation Controls")
-            if gui.button("Clear Canvas"): engine.clear()
-            
-            gui.text("--- Brush & Color ---")
-            brush_id = gui.slider_int("Brush Type", brush_id, 0, 1)
-            dryness = gui.slider_float("Brush Dryness", dryness, 0.0, 1.0)
-            engine.p.color_rgb = gui.color_edit_3("Color Picker", engine.p.color_rgb)
-            
-            # Use dataclass fields to build the UI dynamically
-            from dataclasses import fields
-            
-            for f in fields(SimParams):
-                cat = f.metadata.get("category", "Normal")
-                if cat == "Normal":
-                    if f.name in ["color_rgb"]: continue # Handled specially
-                    
-                    display_name = f.name.replace("_", " ").title()
-                    val = getattr(engine.p, f.name)
-                    new_val = gui.slider_float(display_name, val, f.metadata.get('min', 0.0), f.metadata.get('max', 1.0))
-                    setattr(engine.p, f.name, new_val)
-            
-            gui.text("--- Advanced ---")
-            show_advanced = gui.checkbox("Advanced Settings", show_advanced)
-            
-            if show_advanced:
+        if show_ui:
+            with gui.sub_window("Controls", 0.05, 0.05, 0.3, 0.9) as w:
+                gui.text("Simulation Controls")
+                gui.text(f"Brush: {'ON' if paint_enabled else 'PAUSED'} [P]")
+                gui.text("Toggle UI: [Tab]")
+                gui.text("Safe Move: [Hold Shift]")
+                
+                if gui.button("Clear Canvas"): engine.clear()
+                
+                gui.text("--- Brush & Color ---")
+                brush_id = gui.slider_int("Brush Type", brush_id, 0, 1)
+                dryness = gui.slider_float("Brush Dryness", dryness, 0.0, 1.0)
+                engine.p.color_rgb = gui.color_edit_3("Color Picker", engine.p.color_rgb)
+                
+                # Use dataclass fields to build the UI dynamically
+                from dataclasses import fields
+                
                 for f in fields(SimParams):
-                    cat = f.metadata.get("category")
-                    if cat == "Advanced":
+                    cat = f.metadata.get("category", "Normal")
+                    if cat == "Normal":
+                        if f.name in ["color_rgb"]: continue # Handled specially
+                        
                         display_name = f.name.replace("_", " ").title()
                         val = getattr(engine.p, f.name)
                         new_val = gui.slider_float(display_name, val, f.metadata.get('min', 0.0), f.metadata.get('max', 1.0))
                         setattr(engine.p, f.name, new_val)
+                
+                gui.text("--- Advanced ---")
+                show_advanced = gui.checkbox("Advanced Settings", show_advanced)
+                
+                if show_advanced:
+                    for f in fields(SimParams):
+                        cat = f.metadata.get("category")
+                        if cat == "Advanced":
+                            display_name = f.name.replace("_", " ").title()
+                            val = getattr(engine.p, f.name)
+                            new_val = gui.slider_float(display_name, val, f.metadata.get('min', 0.0), f.metadata.get('max', 1.0))
+                            setattr(engine.p, f.name, new_val)
 
-            if gui.button("Save Screenshot"):
-                engine.render(full_res=True)
-                img = engine._img_u8.to_numpy()
-                import PIL.Image
-                PIL.Image.fromarray(img).save(f"render_{int(time.time())}.png")
+                if gui.button("Save Screenshot"):
+                    engine.render(full_res=True)
+                    img = engine._img_u8.to_numpy()
+                    import PIL.Image
+                    PIL.Image.fromarray(img).save(f"render_{int(time.time())}.png")
 
         # Sync GUI to Engine
         engine.update_params()
