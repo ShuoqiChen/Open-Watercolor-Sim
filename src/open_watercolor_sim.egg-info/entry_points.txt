@@ -1,0 +1,2 @@
+[console_scripts]
+watercolor-sim = open_watercolor_sim.viewer:main

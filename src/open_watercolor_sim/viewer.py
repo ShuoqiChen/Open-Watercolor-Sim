@@ -1,7 +1,7 @@
 import taichi as ti
 import numpy as np
 import time
-from brush import WatercolorEngine
+from .brush import WatercolorEngine, SimParams
 
 def hsv_to_rgb(h, s, v):
     h = h % 1.0
@@ -19,13 +19,24 @@ def hsv_to_rgb(h, s, v):
     if i == 5: return (v, p, q)
     return (0, 0, 0)
 
-def main():
+def launch_viewer():
     import argparse
+    from dataclasses import fields
+    
     parser = argparse.ArgumentParser(description="Watercolor Simulator: High Quality GPU Mode")
     parser.add_argument("-r", "--res", type=int, default=1024, help="Simulation resolution (default: 1024)")
     parser.add_argument("-f", "--fps", type=int, default=60, help="Target FPS cap (default: 60)")
     parser.add_argument("-s", "--substeps", type=int, default=2, help="Max simulation substeps when painting (default: 2)")
     parser.add_argument("-d", "--decimate", type=int, default=1, help="Render decimation (default: 1)")
+    
+    # Add SimParams as arguments automatically
+    for f in fields(SimParams):
+        if f.name == 'color_rgb': continue # Skip complex types for CLI for now
+        arg_name = f.name.replace('_', '-')
+        # Use float for numeric types to be safe
+        arg_type = type(f.default) if f.default is not None else float
+        parser.add_argument(f"--{arg_name}", type=arg_type, default=f.default, help=f.metadata.get('help', ''))
+        
     args = parser.parse_args()
 
     RES = args.res
@@ -38,28 +49,22 @@ def main():
     print(f" - Substeps:   {args.substeps} (adaptive)")
     print(f"--------------------------------")
 
-    # The engine now supports GPU/CPU selection properly
+    # Initialize Engine
     engine = WatercolorEngine(res=RES, arch=arch)
+    
+    # Update engine params from CLI
+    cli_params = {}
+    for f in fields(SimParams):
+        if hasattr(args, f.name):
+            cli_params[f.name] = getattr(args, f.name)
+    engine.update_params(**cli_params)
     
     window = ti.ui.Window("Watercolor: GPU (Fluid Simulation)", (RES, RES))
     canvas = window.get_canvas()
     gui = window.get_gui()
     
-    p_color = (0.4, 0.25, 0.15)
-    brush_radius = 40.0 * (RES / 1024.0)
     brush_id = 0
-    dryness = 0.75
-
-    # Slider-Adjustable Parameters (initialized to engine defaults)
-    p_pigment_load = 0.25 # 1.0
-    p_water_release = 1.25
-    p_diffusion = 0.125
-    p_canvas_evaporation = 0.75
-    p_gravity = 0.1 # 1.0
-    p_fade_time = 30.0
-    p_edge_darkening = 0.8
-    p_paper_scale = 25.0
-    p_granulation = 0.5 # 0.55
+    dryness = 0.5
     
     last_paint_pos = None
     last_paint_time = 0
@@ -70,6 +75,7 @@ def main():
     total_stamps = 0
     last_stat_time = time.time()
     frame_idx = 0
+    show_advanced = False
 
     print("\n[Controls]")
     print(" - Mouse Left (LMB): Paint with bleeding/dripping water")
@@ -101,9 +107,9 @@ def main():
             elif e.key == 'f':
                 dryness = min(1.0, dryness + 0.1)
             elif e.key == '[':
-                brush_radius = max(5, brush_radius - 5)
+                engine.update_params(brush_radius=max(SimParams.__dataclass_fields__['brush_radius'].metadata['min'], engine.p.brush_radius - 5))
             elif e.key == ']':
-                brush_radius = min(200, brush_radius + 5)
+                engine.update_params(brush_radius=min(SimParams.__dataclass_fields__['brush_radius'].metadata['max'], engine.p.brush_radius + 5))
             elif e.key == 's':
                 # Force full render for screenshot
                 engine.render(full_res=True)
@@ -111,6 +117,7 @@ def main():
                 import PIL.Image
                 PIL.Image.fromarray(img).save(f"render_{int(time.time())}.png")
                 print("Saved screenshot.")
+
             elif e.key == ti.ui.ESCAPE:
                 window.running = False
 
@@ -127,17 +134,15 @@ def main():
                     dx, dy = px - lx, py - ly
                     dist = (dx*dx + dy*dy)**0.5
                     
-                    spacing = max(1.0, brush_radius * 0.8)
+                    spacing = max(1.0, engine.p.brush_radius * 0.8)
                     stroke_dist_accum += dist
                     
                     # 1. Throttling: distance-based and time-based
                     if dist > 1e-4: # Ignore absolute stillness
                         if stroke_dist_accum >= spacing or (curr_time - last_paint_time > paint_interval):
-                            engine.set_color(*p_color)
-                            
                             # Use a single stamp per event to keep stamps/sec <= 60
                             if stamps_this_frame < 1:
-                                engine.paint_brush(px, py, brush_radius, brush_id=brush_id, dryness=dryness)
+                                engine.paint_brush(px, py, engine.p.brush_radius, brush_id=brush_id, dryness=dryness)
                                 stamps_this_frame += 1
                                 total_stamps += 1
                             
@@ -147,8 +152,7 @@ def main():
                     last_paint_pos = (px, py)
                 else:
                     # Initial click stamp
-                    engine.set_color(*p_color)
-                    engine.paint_brush(px, py, brush_radius, brush_id=brush_id, dryness=dryness)
+                    engine.paint_brush(px, py, engine.p.brush_radius, brush_id=brush_id, dryness=dryness)
                     stamps_this_frame += 1
                     total_stamps += 1
                     last_paint_pos = (px, py)
@@ -164,22 +168,36 @@ def main():
             gui.text("Simulation Controls")
             if gui.button("Clear Canvas"): engine.clear()
             
-            gui.text("Brush Settings")
+            gui.text("--- Brush & Color ---")
             brush_id = gui.slider_int("Brush Type", brush_id, 0, 1)
-            gui.text("0: Round | 1: Sponge")
-            
-            brush_radius = gui.slider_float("Brush Radius", brush_radius, 5, 200)
             dryness = gui.slider_float("Brush Dryness", dryness, 0.0, 1.0)
-            p_color = gui.color_edit_3("Color Picker", p_color)
+            engine.p.color_rgb = gui.color_edit_3("Color Picker", engine.p.color_rgb)
             
-            gui.text("Physics & Rendering")
-            p_pigment_load = gui.slider_float("Pigment Load", p_pigment_load, 0.02, 0.80)
-            p_water_release = gui.slider_float("Water Release", p_water_release, 0.10, 3.00)
-            p_diffusion = gui.slider_float("Diffusion", p_diffusion, 0.00, 0.50)
-            p_canvas_evaporation = gui.slider_float("Canvas Drying", p_canvas_evaporation, 0.00, 1.00)
-            p_gravity = gui.slider_float("Gravity", p_gravity, 0.00, 2.00)
-            p_edge_darkening = gui.slider_float("Edge Darken", p_edge_darkening, 0.00, 2.00)
+            # Use dataclass fields to build the UI dynamically
+            from dataclasses import fields
             
+            for f in fields(SimParams):
+                cat = f.metadata.get("category", "Normal")
+                if cat == "Normal":
+                    if f.name in ["color_rgb"]: continue # Handled specially
+                    
+                    display_name = f.name.replace("_", " ").title()
+                    val = getattr(engine.p, f.name)
+                    new_val = gui.slider_float(display_name, val, f.metadata.get('min', 0.0), f.metadata.get('max', 1.0))
+                    setattr(engine.p, f.name, new_val)
+            
+            gui.text("--- Advanced ---")
+            show_advanced = gui.checkbox("Advanced Settings", show_advanced)
+            
+            if show_advanced:
+                for f in fields(SimParams):
+                    cat = f.metadata.get("category")
+                    if cat == "Advanced":
+                        display_name = f.name.replace("_", " ").title()
+                        val = getattr(engine.p, f.name)
+                        new_val = gui.slider_float(display_name, val, f.metadata.get('min', 0.0), f.metadata.get('max', 1.0))
+                        setattr(engine.p, f.name, new_val)
+
             if gui.button("Save Screenshot"):
                 engine.render(full_res=True)
                 img = engine._img_u8.to_numpy()
@@ -187,17 +205,7 @@ def main():
                 PIL.Image.fromarray(img).save(f"render_{int(time.time())}.png")
 
         # Sync GUI to Engine
-        engine.update_params(
-            pigment_load=p_pigment_load,
-            water_release=p_water_release,
-            diffusion=p_diffusion,
-            canvas_evaporation=p_canvas_evaporation,
-            gravity=p_gravity,
-            fade_time=0.0, # Disable Clean Cycle (Fade)
-            edge_darkening=p_edge_darkening,
-            paper_texture_scale=p_paper_scale,
-            granulation=p_granulation
-        )
+        engine.update_params()
 
         # Performance stats monitor
         now = time.time()
@@ -226,4 +234,4 @@ def main():
             time.sleep(1.0 / fps_limit - elapsed)
 
 if __name__ == "__main__":
-    main()
+    launch_viewer()

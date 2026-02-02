@@ -1,37 +1,36 @@
+"""
+This engine is a stylized, realtime watercolor-like simulator.
+
+High-level approach:
+- Eulerian grid fields for wetness, pigment, and velocity
+- Semi-Lagrangian advection and simple diffusion for transport
+- Separate wet pigment vs stained pigment layers with drying/absorption
+- Edge-biased pigment deposition to create rim darkening
+- Procedural noise fields for turbulence and paper texture
+- Exponential attenuation style rendering to map pigment mass to color
+
+Inspired by classic building blocks from:
+- Stam 1999 (stable fluids, semi-Lagrangian advection)
+- Curtis et al. 1997 (computer-generated watercolor)
+- Deegan et al. 1997 (coffee-ring motivation for edge deposition)
+- Bridson et al. 2007 (noise-driven flow stylization)
+"""
+
+
 import time
 import random
-from dataclasses import dataclass
 from typing import Optional, Tuple, List
 
 import numpy as np
 import taichi as ti
 
+from .configs import SimParams
+
 # =============================================================================
 # GLOBAL CONSTANTS & SIMULATION LIMITS
 # =============================================================================
-MAX_WET_PIGMENT_MASS = 0.18    # Max pigment mass that can be suspended in water
-MAX_STAIN_PIGMENT_MASS = 0.5  # Max pigment mass that can be absorbed by paper
 REFERENCE_RESOLUTION = 512.0  # Baseline resolution for parameter scaling
 NOISE_TEXTURE_RES = 512       # Resolution of the pre-computed noise buffer
-
-# Internal tuning constants for watercolor feel
-WATER_DIFFUSION_COEFF = 0.4
-PIGMENT_DIFFUSION_COEFF = 0.22
-GRAVITY_COEFF = 8.0
-DRYING_COEFF = 1.5
-INTERNAL_DRIP_THRESHOLD = 0.45
-INTERNAL_DRIP_RATE_COEFF = 2.5
-LATERAL_TURBULENCE_COEFF = 0.8
-FLOW_ADVECTION_COEFF = 10.0
-VELOCITY_DAMPING = 0.15
-PRESSURE_COEFF = 3.5
-MAX_VELOCITY_COEFF = 80.0
-ABSORPTION_RATE_COEFF = 0.12
-PIGMENT_SETTLE_COEFF = 0.32
-WET_DARKEN_COEFF = 0.05
-PIGMENT_ABSORB_FLOOR = 0.10
-PIGMENT_NEUTRAL_DENSITY = 0.35
-FADE_RATE_COEFF = 4.0
 
 _GLOBAL_TAICHI_INITIALIZED = False
 
@@ -82,36 +81,6 @@ def _clamp_01(x: ti.f32) -> ti.f32:
 def _clamp_vec3_01(v: ti.template()) -> ti.template():
     """Clamps a 3-component vector to the range [0.0, 1.0]."""
     return ti.Vector([_clamp_01(v.x), _clamp_01(v.y), _clamp_01(v.z)])
-
-
-@dataclass
-class SimParams:
-    """User-adjustable parameters for the watercolor simulation."""
-    # Brush properties
-    brush_radius: float = 40.0
-    bloom_variance: float = 12.0
-    pigment_load: float = 1.0
-    water_release: float = 0.4
-    
-    # Physics behavior
-    diffusion: float = 0.15           # How fast pigment/water spreads
-    canvas_evaporation: float = 0.2    # How fast the canvas dries
-    gravity: float = 0.5               # Downward force on wet paint
-    fade_time: float = 30.0            # Duration (sec) for full fade/clear cycle. 0 to disable.
-    granulation: float = 0.55          # Visual texture/pigment settlement strength
-    
-    # Internal physical tuning (set to defaults for artistic feel)
-    color_rgb: Tuple[float, float, float] = (0.1, 0.2, 0.8)
-    drying_rate: float = 0.2
-    absorption_rate: float = 0.35
-    pigment_settle: float = 0.55
-    granulation_strength: float = 0.60
-    edge_darkening: float = 0.65
-    paper_texture_scale: float = 2.2
-
-    # Rendering properties
-    wet_darken: float = 0.12
-    stroke_life: float = 8.0          # Time (sec) simulation stays active after a stroke
 
 
 @ti.func
@@ -235,6 +204,8 @@ class WatercolorEngine:
         self._granulation_strength = ti.field(dtype=ti.f32, shape=())
         self._edge_darkening = ti.field(dtype=ti.f32, shape=())
         self._wet_darken = ti.field(dtype=ti.f32, shape=())
+        self._max_wet_pigment = ti.field(dtype=ti.f32, shape=())
+        self._max_stain_pigment = ti.field(dtype=ti.f32, shape=())
         self._pigment_absorb_floor = ti.field(dtype=ti.f32, shape=())
         self._pigment_neutral_density = ti.field(dtype=ti.f32, shape=())
         self._stroke_life = ti.field(dtype=ti.f32, shape=())
@@ -266,30 +237,32 @@ class WatercolorEngine:
         s = self.res_scale
         s2 = s * s
         
-        self._water_diffusion[None] = float(self.p.diffusion) * WATER_DIFFUSION_COEFF * s2
-        self._pigment_diffusion[None] = float(self.p.diffusion) * PIGMENT_DIFFUSION_COEFF * s2
-        self._gravity_strength[None] = float(self.p.gravity) * GRAVITY_COEFF * s
-        self._drying_rate[None] = float(self.p.canvas_evaporation) * DRYING_COEFF
+        self._water_diffusion[None] = float(self.p.diffusion) * float(self.p.water_diffusion_coeff) * s2
+        self._pigment_diffusion[None] = float(self.p.diffusion) * float(self.p.pigment_diffusion_coeff) * s2
+        self._gravity_strength[None] = float(self.p.gravity) * float(self.p.gravity_coeff) * s
+        self._drying_rate[None] = float(self.p.canvas_evaporation) * float(self.p.drying_coeff)
         self._granulation_strength[None] = float(self.p.granulation) * 1.5 
         
-        self._drip_threshold[None] = INTERNAL_DRIP_THRESHOLD
-        self._drip_rate[None] = INTERNAL_DRIP_RATE_COEFF * s
-        self._lateral_turbulence[None] = LATERAL_TURBULENCE_COEFF * s
-        self._flow_advection[None] = FLOW_ADVECTION_COEFF * s
-        self._velocity_damping[None] = VELOCITY_DAMPING
-        self._k_pressure[None] = PRESSURE_COEFF * s
-        self._v_max[None] = MAX_VELOCITY_COEFF * s
+        self._drip_threshold[None] = float(self.p.drip_threshold)
+        self._drip_rate[None] = float(self.p.drip_rate_coeff) * s
+        self._lateral_turbulence[None] = float(self.p.turbulence_coeff) * s
+        self._flow_advection[None] = float(self.p.advection_coeff) * s
+        self._velocity_damping[None] = float(self.p.velocity_damping)
+        self._k_pressure[None] = float(self.p.pressure_coeff) * s
+        self._v_max[None] = float(self.p.max_velocity_coeff) * s
         self._stroke_life[None] = float(self.p.stroke_life)
-        self._absorption_rate[None] = ABSORPTION_RATE_COEFF
-        self._pigment_settle[None] = PIGMENT_SETTLE_COEFF
+        self._absorption_rate[None] = float(self.p.absorption_coeff)
+        self._pigment_settle[None] = float(self.p.settle_coeff)
         self._edge_darkening[None] = float(self.p.edge_darkening) * 0.5 
-        self._wet_darken[None] = WET_DARKEN_COEFF
-        self._pigment_absorb_floor[None] = PIGMENT_ABSORB_FLOOR
-        self._pigment_neutral_density[None] = PIGMENT_NEUTRAL_DENSITY
+        self._wet_darken[None] = float(self.p.wet_darken_coeff)
+        self._max_wet_pigment[None] = float(self.p.max_wet_pigment)
+        self._max_stain_pigment[None] = float(self.p.max_stain_pigment)
+        self._pigment_absorb_floor[None] = float(self.p.pigment_absorb_floor)
+        self._pigment_neutral_density[None] = float(self.p.pigment_neutral_density)
         
         ft = float(self.p.fade_time)
         if ft > 0:
-            self._fade_rate[None] = FADE_RATE_COEFF / (ft + 1e-6)
+            self._fade_rate[None] = 4.0 / (ft + 1e-6)
         else:
             self._fade_rate[None] = 0.0
 
@@ -881,8 +854,8 @@ class WatercolorEngine:
                 stain_rgb = a.xyz / (stain_m + 1e-10)
 
             # Convert masses to opacities
-            wet_alpha = _clamp_01(wet_m / (MAX_WET_PIGMENT_MASS + 1e-6))
-            stain_alpha = _clamp_01(stain_m / (MAX_STAIN_PIGMENT_MASS + 1e-6))
+            wet_alpha = _clamp_01(wet_m / (self._max_wet_pigment[None] + 1e-6))
+            stain_alpha = _clamp_01(stain_m / (self._max_stain_pigment[None] + 1e-6))
 
             # Rendering strengths
             wet_strength = 0.85 
@@ -941,8 +914,8 @@ class WatercolorEngine:
             stain_m = a.w
             stain_rgb = a.xyz / (stain_m + 1e-10) if stain_m > 1e-8 else ti.Vector([0.0, 0.0, 0.0])
             
-            wet_alpha = _clamp_01(wet_m / (MAX_WET_PIGMENT_MASS + 1e-6))
-            stain_alpha = _clamp_01(stain_m / (MAX_STAIN_PIGMENT_MASS + 1e-6))
+            wet_alpha = _clamp_01(wet_m / (self._max_wet_pigment[None] + 1e-6))
+            stain_alpha = _clamp_01(stain_m / (self._max_stain_pigment[None] + 1e-6))
             
             wet_strength = 0.85
             stain_strength = 0.85 * (0.5 + 2.0 * self._edge_darkening[None])

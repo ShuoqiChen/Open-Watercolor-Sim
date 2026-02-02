@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "open-watercolor-sim"
+version = "1.0.0"
+authors = [
+  { name="Shuoqichen", email="your-email@example.com" },
+]
+description = "A high-performance GPU-accelerated watercolor simulation engine using Taichi."
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "taichi>=1.7.4",
+    "numpy>=2.0.0",
+    "pillow>=10.0.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/shuoqichen/Open-Watercolor-Sim"
+
+[project.scripts]
+watercolor-sim = "open_watercolor_sim.viewer:launch_viewer"
+
+[tool.setuptools.packages.find]
+where = ["src"]
