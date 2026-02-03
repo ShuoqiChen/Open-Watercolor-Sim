@@ -1,8 +1,9 @@
 Metadata-Version: 2.4
 Name: open-watercolor-sim
-Version: 1.0.0
+Version: 0.1.0
 Summary: A high-performance GPU-accelerated watercolor simulation engine using Taichi.
 Author-email: Shuoqichen <samchenmgx@gmail.com>
+License: Apache-2.0
 Project-URL: Homepage, https://github.com/shuoqichen/Open-Watercolor-Sim
 Keywords: watercolor,simulation,computer graphics,real-time,taichi,gpu,digital painting
 Classifier: Programming Language :: Python :: 3
@@ -18,7 +19,7 @@ Dynamic: license-file
 
 # Open Watercolor Sim
 
-Current Version: **v1.0.0**
+Current Version: **v0.1.0**
 
 A high-quality, GPU-accelerated watercolor simulation engine built using Taichi. This simulator models fluid dynamics, pigment diffusion, and edge darkening to create realistic-looking watercolor effects in real-time.
 
@@ -38,6 +39,15 @@ A high-quality, GPU-accelerated watercolor simulation engine built using Taichi.
 -->
 
 ## Installation
+
+### Prerequisites (Linux Users)
+Tkinter is required for the file-save dialog. If you are on Linux, you may need to install it via your system package manager:
+
+- **Ubuntu/Debian**: `sudo apt-get install python3-tk`
+- **Fedora**: `sudo dnf install python3-tkinter`
+- **Arch**: `sudo pacman -S tk`
+
+### Setup steps
 
 1. **Clone the repository**:
    ```bash
@@ -82,7 +92,7 @@ watercolor-sim --help
 
 #### Keyboard Shortcuts
 - **Space**: Clear the canvas.
-- **S**: Save a screenshot (saved as `render_[timestamp].png`).
+- **K**: Save a screenshot (saved as `render_[timestamp].png`).
 - **[ / ]**: Decrease / Increase brush radius.
 - **D / F**: Decrease / Increase brush dryness.
 - **B**: Toggle between brush types (Round / Sponge).
@@ -97,6 +107,7 @@ watercolor-sim --help
 | :--- | :--- | :--- |
 | **OS** | Windows 10+, macOS 10.15+, Linux | macOS (Apple Silicon) or Windows (NVIDIA) |
 | **Python** | 3.8+ | 3.12 |
+| **GUI** | Tkinter Support | (Standard on Windows/macOS) |
 | **GPU** | Vulkan, Metal, or CUDA Support | NVIDIA RTX (CUDA) or Apple M-series (Metal) |
 | **Taichi** | 1.7.4+ | Latest Stable |
 | **Memory** | 8 GB RAM | 16 GB RAM |
@@ -112,14 +123,14 @@ watercolor-sim --help
 
 ## License
 
-This project is dual-licensed under the **MIT License** and the **Apache License 2.0**. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the **Apache License 2.0**. See the [LICENSE](LICENSE) file for details.
 
 ## How to Cite
 
 If you use Open-Watercolor-Sim in research, please cite the software and, if applicable, the accompanying paper.
 
 ### Software citation (recommended)
-Open-Watercolor-Sim: A real-time GPU-accelerated watercolor simulation framework. Version v1.0.0.
+Open-Watercolor-Sim: A real-time GPU-accelerated watercolor simulation framework. Version v0.1.0.
 Repository: https://github.com/shuoqichen/Open-Watercolor-Sim
 
 A DOI will be provided for the paper-aligned release via Zenodo.
@@ -130,7 +141,7 @@ A DOI will be provided for the paper-aligned release via Zenodo.
   title        = {Open-Watercolor-Sim: A Real-Time GPU-Accelerated Watercolor Simulation Framework},
   author       = {Shuoqi Chen},
   year         = {2026},
-  version      = {v1.0.0},
+  version      = {v0.1.0},
   url          = {https://github.com/shuoqichen/Open-Watercolor-Sim}
 }
 ```

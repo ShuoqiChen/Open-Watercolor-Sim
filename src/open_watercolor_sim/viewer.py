@@ -2,7 +2,7 @@
 Open Watercolor Sim.
 
 Copyright (c) 2026 Shuoqi Chen
-SPDX-License-Identifier: MIT OR Apache-2.0
+SPDX-License-Identifier: Apache-2.0
 """
 import taichi as ti
 import numpy as np
@@ -297,5 +297,9 @@ def launch_viewer():
         if elapsed < 1.0 / fps_limit:
             time.sleep(1.0 / fps_limit - elapsed)
 
-if __name__ == "__main__":
+def main():
+    """Main entry point that launches the viewer."""
     launch_viewer()
+
+if __name__ == "__main__":
+    main()
