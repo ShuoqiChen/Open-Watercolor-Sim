@@ -1,3 +1,9 @@
+"""
+Open Watercolor Sim.
+
+Copyright (c) 2026 Shuoqi Chen
+SPDX-License-Identifier: MIT OR Apache-2.0
+"""
 import taichi as ti
 import numpy as np
 import time

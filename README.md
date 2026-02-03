@@ -16,8 +16,7 @@ A high-quality, GPU-accelerated watercolor simulation engine built using Taichi.
 ### Simulation Preview
 ![Watercolor Simulation](demo/demo.gif)
 
-### Output Example
-![Watercolor Demo](demo/demo.png)
+
 
 ## Installation
 
@@ -91,6 +90,34 @@ watercolor-sim --help
         - [watercolor_engine.py](src/open_watercolor_sim/brush/watercolor_engine.py): The core simulation engine.
         - [configs.py](src/open_watercolor_sim/brush/configs.py): Parameter definitions and metadata.
 - `pyproject.toml`: Package build configuration and entry points.
+
+### Example
+![Watercolor Demo](demo/demo.png)
+
+## License
+
+This project is dual-licensed under the **MIT License** and the **Apache License 2.0**. See the [LICENSE](LICENSE) file for details.
+
+## How to Cite
+
+If you use Open-Watercolor-Sim in research, please cite the software and, if applicable, the accompanying paper.
+
+### Software citation (recommended)
+Open-Watercolor-Sim: A real-time GPU-accelerated watercolor simulation framework. Version v1.0.0.
+Repository: https://github.com/shuoqichen/Open-Watercolor-Sim
+
+A DOI will be provided for the paper-aligned release via Zenodo.
+
+### BibTeX
+```bibtex
+@software{open_watercolor_sim,
+  title        = {Open-Watercolor-Sim: A Real-Time GPU-Accelerated Watercolor Simulation Framework},
+  author       = {Shuoqi Chen},
+  year         = {2026},
+  version      = {v1.0.0},
+  url          = {https://github.com/shuoqichen/Open-Watercolor-Sim}
+}
+```
 
 ## References and inspirations
 
