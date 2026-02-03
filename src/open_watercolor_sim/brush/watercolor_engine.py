@@ -214,7 +214,6 @@ class WatercolorEngine:
         self._pigment_absorb_floor = ti.field(dtype=ti.f32, shape=())
         self._pigment_neutral_density = ti.field(dtype=ti.f32, shape=())
         self._stroke_life = ti.field(dtype=ti.f32, shape=())
-        self._fade_rate = ti.field(dtype=ti.f32, shape=())
 
     def set_params(self, params: SimParams):
         self.p = params
@@ -264,12 +263,6 @@ class WatercolorEngine:
         self._max_stain_pigment[None] = float(self.p.max_stain_pigment)
         self._pigment_absorb_floor[None] = float(self.p.pigment_absorb_floor)
         self._pigment_neutral_density[None] = float(self.p.pigment_neutral_density)
-        
-        ft = float(self.p.fade_time)
-        if ft > 0:
-            self._fade_rate[None] = 4.0 / (ft + 1e-6)
-        else:
-            self._fade_rate[None] = 0.0
 
     def reset(self):
         self._upload_params()
@@ -763,13 +756,6 @@ class WatercolorEngine:
             kept_a = total_am / (total_am_raw + 1e-6)
             
             res_c = (old_a.xyz + settled_amt) * kept_a
-            
-            # Optional automatic fading
-            fr = self._fade_rate[None]
-            if fr > 0.0:
-                fade_factor = ti.max(0.0, 1.0 - fr * dt)
-                res_c *= fade_factor
-                total_am *= fade_factor
             
             self.A[i, j] = ti.Vector([res_c.x, res_c.y, res_c.z, total_am])
             self.P[pong, i, j] = ti.Vector([p_prev.x - settled_amt.x, p_prev.y - settled_amt.y, p_prev.z - settled_amt.z, p_prev.w - settled_m])

@@ -7,6 +7,9 @@ SPDX-License-Identifier: MIT OR Apache-2.0
 import taichi as ti
 import numpy as np
 import time
+import PIL.Image
+import os
+import multiprocessing as mp
 from .brush import WatercolorEngine, SimParams
 
 def hsv_to_rgb(h, s, v):
@@ -24,6 +27,53 @@ def hsv_to_rgb(h, s, v):
     if i == 4: return (t, p, v)
     if i == 5: return (v, p, q)
     return (0, 0, 0)
+
+def _file_dialog_process(queue, initial_name):
+    """Helper process to show file dialog without crashing macOS Cocoa event loop."""
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes('-topmost', True)
+        file_path = filedialog.asksaveasfilename(
+            title="Save Watercolor Screenshot",
+            initialfile=initial_name,
+            defaultextension=".png",
+            filetypes=[("PNG Image", "*.png"), ("All files", "*.*")]
+        )
+        root.destroy()
+        queue.put(file_path)
+    except Exception as e:
+        print(f"Dialog Error: {e}")
+        queue.put(None)
+
+def save_screenshot(img_data):
+    """Saves a screenshot after getting a path from a separate process dialog."""
+    initial_name = f"render_{int(time.time())}.png"
+    
+    # We use a Queue to get the result from the child process
+    q = mp.Queue()
+    p = mp.Process(target=_file_dialog_process, args=(q, initial_name))
+    p.start()
+    
+    # This will block the simulation for a moment while the user picks a file,
+    # which is desirable so they don't keep painting while the dialog is open.
+    file_path = q.get()
+    p.join()
+    
+    if file_path:
+        try:
+            # Taichi fields are (width, height, 3) with origin at bottom-left.
+            # PIL expects (height, width, 3) with origin at top-left.
+            # Transpose (0, 1, 2) -> (1, 0, 2) and flip vertically.
+            corrected_img = np.flip(img_data.swapaxes(0, 1), 0)
+            PIL.Image.fromarray(corrected_img).save(file_path)
+            print(f"Saved screenshot to: {file_path}")
+        except Exception as e:
+            print(f"Failed to save image: {e}")
+    else:
+        print("Save cancelled.")
 
 def launch_viewer():
     import argparse
@@ -86,7 +136,7 @@ def launch_viewer():
     print("\n[Controls]")
     print(" - Mouse Left (LMB): Paint with bleeding/dripping water")
     print(" - Space: Clear Canvas")
-    print(" - S: Save Screenshot")
+    print(" - K: Save Screenshot")
     print(" - UI: Use the 'Controls' sidebar (top-left) for all sliders")
     print(" - Shortcuts: [ / ] for Size, D / F for Dryness")
 
@@ -121,13 +171,11 @@ def launch_viewer():
                 engine.update_params(brush_radius=max(SimParams.__dataclass_fields__['brush_radius'].metadata['min'], engine.p.brush_radius - 5))
             elif e.key == ']':
                 engine.update_params(brush_radius=min(SimParams.__dataclass_fields__['brush_radius'].metadata['max'], engine.p.brush_radius + 5))
-            elif e.key == 's':
-                # Force full render for screenshot
+            elif e.key == 'k':
+                # Force full render for screenshot and open dialog
                 engine.render(full_res=True)
                 img = engine._img_u8.to_numpy()
-                import PIL.Image
-                PIL.Image.fromarray(img).save(f"render_{int(time.time())}.png")
-                print("Saved screenshot.")
+                save_screenshot(img)
             elif e.key == 'p':
                 paint_enabled = not paint_enabled
             elif e.key == ti.ui.TAB:
@@ -218,8 +266,7 @@ def launch_viewer():
                 if gui.button("Save Screenshot"):
                     engine.render(full_res=True)
                     img = engine._img_u8.to_numpy()
-                    import PIL.Image
-                    PIL.Image.fromarray(img).save(f"render_{int(time.time())}.png")
+                    save_screenshot(img)
 
         # Sync GUI to Engine
         engine.update_params()

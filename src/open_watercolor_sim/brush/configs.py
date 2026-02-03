@@ -12,20 +12,19 @@ class SimParams:
     """User-adjustable parameters for the watercolor simulation."""
     
     # --- [NORMAL] Brush Properties ---
-    brush_radius: float = field(default=40.0, metadata={"help": "The radius of the brush in pixels.", "category": "Normal", "min": 5.0, "max": 200.0})
-    pigment_load: float = field(default=1.0, metadata={"help": "Amount of pigment deposited with each stroke.", "category": "Normal", "min": 0.0, "max": 2.0})
-    water_release: float = field(default=0.4, metadata={"help": "Amount of water deposited with each stroke.", "category": "Normal", "min": 0.0, "max": 2.0})
+    brush_radius: float = field(default=40.8, metadata={"help": "The radius of the brush in pixels.", "category": "Normal", "min": 5.0, "max": 200.0})
+    pigment_load: float = field(default=1.578, metadata={"help": "Amount of pigment deposited with each stroke.", "category": "Normal", "min": 0.0, "max": 2.0})
+    water_release: float = field(default=2.000, metadata={"help": "Amount of water deposited with each stroke.", "category": "Normal", "min": 0.0, "max": 2.0})
     
     # --- [NORMAL] Physics Behavior ---
-    diffusion: float = field(default=0.15, metadata={"help": "How fast pigment and water spread across the paper.", "category": "Normal", "min": 0.0, "max": 1.0})
-    canvas_evaporation: float = field(default=0.2, metadata={"help": "Rate at which the canvas dries (water loss).", "category": "Normal", "min": 0.0, "max": 1.0})
-    gravity: float = field(default=0.5, metadata={"help": "Downward force affecting wet paint flow.", "category": "Normal", "min": 0.0, "max": 5.0})
-    granulation: float = field(default=0.55, metadata={"help": "Strength of pigment settling into paper grain.", "category": "Normal", "min": 0.0, "max": 1.0})
+    diffusion: float = field(default=0.400, metadata={"help": "How fast pigment and water spread across the paper.", "category": "Normal", "min": 0.0, "max": 1.0})
+    canvas_evaporation: float = field(default=0.200, metadata={"help": "Rate at which the canvas dries (water loss).", "category": "Normal", "min": 0.0, "max": 1.0})
+    gravity: float = field(default=1.486, metadata={"help": "Downward force affecting wet paint flow.", "category": "Normal", "min": 0.0, "max": 5.0})
+    granulation: float = field(default=0.784, metadata={"help": "Strength of pigment settling into paper grain.", "category": "Normal", "min": 0.0, "max": 1.0})
     
     # --- [NORMAL] Visuals ---
-    color_rgb: Tuple[float, float, float] = field(default=(0.1, 0.2, 0.8), metadata={"help": "Current brush color (normalized RGB).", "category": "Normal"})
-    edge_darkening: float = field(default=0.65, metadata={"help": "Strength of the wet-edge darkening effect.", "category": "Normal", "min": 0.0, "max": 2.0})
-    fade_time: float = field(default=30.0, metadata={"help": "Seconds until canvas fully clears (0 to disable).", "category": "Normal", "min": 0.0, "max": 300.0})
+    color_rgb: Tuple[float, float, float] = field(default=(0.8, 0.102, 0.8), metadata={"help": "Current brush color (normalized RGB).", "category": "Normal"})
+    edge_darkening: float = field(default=1.903, metadata={"help": "Strength of the wet-edge darkening effect.", "category": "Normal", "min": 0.0, "max": 2.0})
 
     # --- [ADVANCED] Internal Media Physics ---
     max_wet_pigment: float = field(default=0.18, metadata={"help": "Max pigment mass suspended in water.", "category": "Advanced", "min": 0.01, "max": 1.0})

@@ -9,14 +9,15 @@ A high-quality, GPU-accelerated watercolor simulation engine built using Taichi.
 - **Real-time Fluid Simulation**: High-performance GPU simulation of water and pigment.
 - **Dynamic Brushes**: Round and Sponge brush types with adjustable properties.
 - **Physical Parameters**: Control diffusion, evaporation, gravity, and pigment load.
-- **Cross-Platform**: Runs on any system supported by Taichi (CUDA, Vulkan, Metal, etc.).
+- **Cross-Platform**: Runs on any system supported by Taichi (CUDA, Metal, etc.).
 
-## Demos
+## Gallery
 
-### Simulation Preview
 ![Watercolor Simulation](demo/demo.gif)
 
-
+<!-- Final Output hidden
+![Watercolor Demo](demo/demo.png)
+-->
 
 ## Installation
 
@@ -63,7 +64,7 @@ watercolor-sim --help
 
 #### Keyboard Shortcuts
 - **Space**: Clear the canvas.
-- **S**: Save a screenshot (saved as `render_[timestamp].png`).
+- **K**: Save a screenshot (saved as `render_[timestamp].png`).
 - **[ / ]**: Decrease / Increase brush radius.
 - **D / F**: Decrease / Increase brush dryness.
 - **B**: Toggle between brush types (Round / Sponge).
@@ -78,6 +79,7 @@ watercolor-sim --help
 | :--- | :--- | :--- |
 | **OS** | Windows 10+, macOS 10.15+, Linux | macOS (Apple Silicon) or Windows (NVIDIA) |
 | **Python** | 3.8+ | 3.12 |
+| **GUI** | Tkinter Support | (Standard on Windows/macOS) |
 | **GPU** | Vulkan, Metal, or CUDA Support | NVIDIA RTX (CUDA) or Apple M-series (Metal) |
 | **Taichi** | 1.7.4+ | Latest Stable |
 | **Memory** | 8 GB RAM | 16 GB RAM |
@@ -90,9 +92,6 @@ watercolor-sim --help
         - [watercolor_engine.py](src/open_watercolor_sim/brush/watercolor_engine.py): The core simulation engine.
         - [configs.py](src/open_watercolor_sim/brush/configs.py): Parameter definitions and metadata.
 - `pyproject.toml`: Package build configuration and entry points.
-
-### Example
-![Watercolor Demo](demo/demo.png)
 
 ## License
 

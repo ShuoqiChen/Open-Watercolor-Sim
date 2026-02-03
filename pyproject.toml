@@ -21,6 +21,7 @@ dependencies = [
     "taichi>=1.7.4",
     "numpy>=2.0.0",
     "pillow>=10.0.0",
+    # Note: tkinter is also required (included with most Python distributions)
 ]
 
 [project.urls]

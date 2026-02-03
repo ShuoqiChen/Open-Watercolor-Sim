@@ -1,3 +1,5 @@
+LICENSE
+MANIFEST.in
 README.md
 pyproject.toml
 src/open_watercolor_sim/__init__.py
